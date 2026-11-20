@@ -28,7 +28,7 @@ internal sealed class ShortcutMenu
             yield return this.backToAgents is not null ? "back" : "blank";
             yield return "action:zoom";
             yield return "action:cycle";
-            yield return "action:cycle-tabs";
+            yield return "action:agent-next";
             yield return "action:go-to";
             foreach (var group in new[] { "Layout", "Tabs", "Spaces" }) yield return "group:" + group;
         }

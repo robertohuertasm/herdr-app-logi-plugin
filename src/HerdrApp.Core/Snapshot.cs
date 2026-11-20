@@ -56,6 +56,10 @@ public sealed record Agent
     public string SpaceId { get; init; } = "";
     public string SpaceName { get; init; } = "";
     public string TabId { get; init; } = "";
+    // Its tab's name, or the tab's position ("2") when nobody named it.
+    public string TabName { get; init; } = "";
+    // The terminal's title, read only when neither name nor tab tells it apart.
+    public string? Title { get; init; }
     public string? Machine { get; init; }
     public string? Name { get; init; }
     public string? App { get; init; }

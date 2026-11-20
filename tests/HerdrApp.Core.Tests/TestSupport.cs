@@ -60,7 +60,11 @@ sealed class FakeApp : IDisposable
 
     public IReadOnlyList<string> Names => Commands.Select(c => c.Name).ToList();
 
-    public HerdrAppClient Client() => new(SocketPath, new NoWindow());
+    // Titles are answered from Titles instead of running hc.
+    public Dictionary<string, string> Titles { get; } = [];
+
+    public HerdrAppClient Client() => new(SocketPath, new NoWindow(), new TerminalTitles(address =>
+        Task.FromResult(Titles.TryGetValue(address, out var title) ? $$"""{"title":{{System.Text.Json.JsonSerializer.Serialize(title)}}}""" : "{}")));
 
     private async Task AcceptAsync()
     {

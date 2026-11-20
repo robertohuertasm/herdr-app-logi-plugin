@@ -10,9 +10,11 @@ public static class FixedSlots
     public static Space? Space(Snapshot snapshot, int slot) =>
         slot is >= 1 and <= Count ? snapshot.Spaces.FirstOrDefault(s => s.Index == slot) : null;
 
-    // The app reports no terminal title, so an unnamed agent goes by its space.
+    // As the app's agents list: the tab's name tells agents apart, unless the
+    // tab is unnamed or named after its program; then the terminal's title does.
     public static string AgentLabel(Agent agent, int slot) =>
-        FirstNonBlank(agent.Name, agent.SpaceName, agent.App) ?? $"Recent {slot}";
+        FirstNonBlank(agent.Name, TerminalTitles.InformativeTabName(agent) ? agent.TabName : null, agent.Title, agent.SpaceName, agent.App)
+        ?? $"Recent {slot}";
 
     public static string SpaceLabel(Space space, int slot) =>
         FirstNonBlank(space.Name) ?? $"Space {slot}";

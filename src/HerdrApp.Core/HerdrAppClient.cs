@@ -28,13 +28,15 @@ public sealed class HerdrAppClient
 
     private readonly RecencyTracker recency = new();
     private readonly AppWindow window;
+    private readonly TerminalTitles titles;
     private readonly SemaphoreSlim agentFocusGate = new(1, 1);
     private string? pendingAgentKey;
 
-    public HerdrAppClient(string? socketPath = null, AppWindow? window = null)
+    public HerdrAppClient(string? socketPath = null, AppWindow? window = null, TerminalTitles? titles = null)
     {
         SocketPath = socketPath ?? DefaultSocketPath;
         this.window = window ?? new AppWindow();
+        this.titles = titles ?? new TerminalTitles();
     }
 
     public string SocketPath { get; }
@@ -92,7 +94,10 @@ public sealed class HerdrAppClient
         await Task.WhenAll(lsTask, statusTask);
         var ls = (await lsTask).Deserialize<RawLs>(Json) ?? throw new HerdrAppException("herdr-app ls: malformed response");
         var status = (await statusTask).Deserialize<RawStatus>(Json) ?? throw new HerdrAppException("herdr-app status: malformed response");
-        return Build(ls, status, recency);
+        var snapshot = Build(ls, status, recency);
+        var titled = titles.Apply(snapshot.Agents);
+        var byKey = titled.ToDictionary(a => a.Key);
+        return snapshot with { Agents = titled, Recent = snapshot.Recent.Select(a => byKey[a.Key]).ToList() };
     }
 
     internal static Snapshot Build(RawLs ls, RawStatus status, RecencyTracker? recency = null)
@@ -119,6 +124,7 @@ public sealed class HerdrAppClient
                         SpaceId = rawSpace.Id,
                         SpaceName = rawSpace.Name ?? "",
                         TabId = rawTab.Id,
+                        TabName = rawTab.Name ?? "",
                         Machine = machine,
                         Name = terminal.Name,
                         App = terminal.App,

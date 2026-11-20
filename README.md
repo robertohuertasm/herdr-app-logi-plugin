@@ -23,8 +23,9 @@ working, then idle. Ties follow the same recent-state-change order.
 Blocked is red, done is blue, working is amber, and idle is green.
 Press to focus; hold and then press **Close?** within three seconds to close the
 pane. The app closes the pane, which ends its terminal. The Shortcuts folder
-shows Zoom pane on the top row, Cycle panes, Cycle tabs and Go to on the
-middle row, then Layout, Tabs and Spaces on the bottom row. When opened from
+shows Zoom pane on the top row, Cycle panes, Next agent and Go to on the
+middle row, then Layout, Tabs and Spaces on the bottom row. Layout holds Split
+right/down, Pane left/up/down/right, Close pane and Sidebar. When opened from
 Agents, Back beside the native Back returns to the agent list; the standalone
 Shortcuts folder leaves that position blank. Each shortcut is independently assignable.
 
@@ -58,7 +59,7 @@ pane or its terminal has changed before confirmation.
 | **Recent Agent 1–9** | Shows agents in recent state-change order; press to focus, hold and confirm to close its pane. |
 | **Space 1–9** | Shows a space's status; press to show it, then cycle its active tab's panes. |
 | **Herdr App** | Open shortcuts, cycle panes and browse live agents. Hold an agent and confirm to close its pane. |
-| **Herdr App shortcuts** | Zoom, cycle panes, Go to, and open Layout, Tabs or Spaces. Each shortcut is also assignable separately. |
+| **Herdr App shortcuts** | Zoom, cycle panes, next agent, Go to, and open Layout, Tabs or Spaces. Each shortcut is also assignable separately, including Previous agent and Cycle tabs. |
 
 <p align="center"><img src="docs/images/agents-folder.png" width="420" alt="Agents folder with cycle controls and six agents"></p>
 
@@ -80,7 +81,10 @@ permission is involved:
 | Agent / Recent Agent | `agent.focus {terminal}` |
 | Space | `space.select {id}`, then `pane.focus` on the next pane of its active tab |
 | Zoom pane | `pane.zoom` |
-| Cycle panes, Previous/Next pane | `pane.focus` on the neighbouring pane of the focused tab |
+| Cycle panes | `pane.focus` on the next pane of the focused tab, in `ls` order (which need not match the cards' layout) |
+| Pane left/up/down/right | `pane.go {direction}`, the app's own Cmd+Alt+arrows |
+| Next/Previous agent | `agent.next` / `agent.prev`, in the order of the app's agents list |
+| Sidebar | `layout.toggle {id: "sidebar"}` (Cmd+B) |
 | Cycle tabs, Previous/Next tab | `tab.next` / `tab.prev` |
 | Go to | `mod.open {name: "picker"}`, the app's own Go to picker (Cmd+P) |
 | Split right/down | `pane.split {direction}` |
@@ -96,9 +100,12 @@ configuration in the plugin. Those in a space on another machine show the R
 badge. **Done** is the app's own unseen state: it turns idle once you look at
 the agent in the app.
 
-An agent's key shows its name when it has one, otherwise its space's name,
-otherwise the program (`claude`, `codex`, ...). The app does not report terminal
-titles over its socket.
+An agent's key is labelled as in the app's agents list: its name when it has
+one, otherwise its tab's name (the session, e.g. "PR 9750 - inventory"). A tab
+that only has its number or is named after its program ("Claude Code") says
+nothing, so those agents show their terminal's title ("Fix login"), then the
+space's name. The socket has no titles: they come from `hc get <terminal>
+--json`, only for agents that need one, in the background every five seconds.
 
 `ls` lists only each terminal's direct sub-agent addresses. While a sub-agent
 view is open, the plugin also runs `hc ls --json` (at most every two seconds)

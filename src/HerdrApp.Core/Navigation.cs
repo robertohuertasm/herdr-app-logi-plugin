@@ -8,11 +8,13 @@ public sealed class Navigation(HerdrAppClient client)
     public static readonly Shortcut[] All =
     [
         new("zoom", "Zoom pane", "Main"), new("cycle", "Cycle panes", "Main"),
+        new("agent-next", "Next agent", "Main"), new("agent-prev", "Previous agent", "Main"),
         new("cycle-tabs", "Cycle tabs", "Main"),
         new("go-to", "Go to", "Main"),
         new("split-right", "Split right", "Layout"), new("split-down", "Split down", "Layout"),
-        new("pane-prev", "Previous pane", "Layout"), new("pane-next", "Next pane", "Layout"),
-        new("close-pane", "Close pane", "Layout"),
+        new("pane-left", "Pane left", "Layout"), new("pane-up", "Pane up", "Layout"),
+        new("pane-down", "Pane down", "Layout"), new("pane-right", "Pane right", "Layout"),
+        new("close-pane", "Close pane", "Layout"), new("sidebar", "Sidebar", "Layout"),
         new("tab-new", "New tab", "Tabs"), new("tab-prev", "Previous tab", "Tabs"), new("tab-next", "Next tab", "Tabs"),
         new("space-new", "New space", "Spaces"), new("space-prev", "Previous space", "Spaces"), new("space-next", "Next space", "Spaces"),
     ];
@@ -36,6 +38,14 @@ public sealed class Navigation(HerdrAppClient client)
                 case "tab-prev": await client.DoAsync("tab.prev"); break;
                 case "space-next": await client.DoAsync("space.next"); break;
                 case "space-prev": await client.DoAsync("space.prev"); break;
+                // In the order of the app's agents list, which puts those that need you first.
+                case "agent-next": await client.DoAsync("agent.next"); break;
+                case "agent-prev": await client.DoAsync("agent.prev"); break;
+                // The app moves between panes by direction, as its keys do.
+                case "pane-left" or "pane-up" or "pane-down" or "pane-right":
+                    await client.DoAsync("pane.go", new { direction = id[5..] });
+                    break;
+                case "sidebar": await client.DoAsync("layout.toggle", new { id = "sidebar" }); break;
                 case "split-right" or "split-down":
                     await client.DoCreateAsync("pane.split", new { direction = id == "split-right" ? "right" : "down" });
                     break;
@@ -48,11 +58,12 @@ public sealed class Navigation(HerdrAppClient client)
                     await client.DoCreateAsync("space.new", new { machine = s.FocusedSpace?.Machine ?? "" });
                     break;
                 }
-                case "cycle" or "pane-next" or "pane-prev":
+                case "cycle":
                 {
+                    // The terminals' order in `ls`, which need not match the cards' layout.
                     var s = await client.GetSnapshotAsync();
                     var tab = s.FocusedTab;
-                    var target = tab is null ? null : Neighbor(tab.Panes.Select(p => p.PaneId).ToList(), s.FocusedPaneId, id == "pane-prev" ? -1 : 1);
+                    var target = tab is null ? null : Neighbor(tab.Panes.Select(p => p.PaneId).ToList(), s.FocusedPaneId, 1);
                     if (target is not null)
                     {
                         await client.FocusPaneAsync(target);

@@ -107,13 +107,13 @@ async function main() {
   ], 'agents-folder.png');
   await renderDeck([
     action('chevron-left','Back'),{ type: 'blank', label: '' },action('screen-full','Zoom pane'),
-    action('sync','Cycle panes'),action('multiple-windows','Cycle tabs'),action('arrow-circle-right','Go to'),
+    action('sync','Cycle panes'),action('arrow-circle-down','Next agent'),action('arrow-circle-right','Go to'),
     action('layout','Layout'),action('multiple-windows','Tabs'),action('folder','Spaces'),
   ], 'shortcuts-folder.png');
   await renderDeck([
     action('chevron-left','Back'),action('split-horizontal','Split right'),action('split-vertical','Split down'),
-    action('arrow-left','Previous pane'),action('arrow-right','Next pane'),action('close','Close pane'),
-    { type: 'blank', label: '' },{ type: 'blank', label: '' },{ type: 'blank', label: '' },
+    action('arrow-left','Pane left'),action('arrow-up','Pane up'),action('arrow-down','Pane down'),
+    action('arrow-right','Pane right'),action('close','Close pane'),action('layout-sidebar-left','Sidebar'),
   ], 'layout-folder.png');
   await renderStates();
   console.log('Rendered Keypad and status diagrams in docs/images');

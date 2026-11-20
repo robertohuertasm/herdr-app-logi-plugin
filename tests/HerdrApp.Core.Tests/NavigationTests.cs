@@ -9,15 +9,12 @@ public class NavigationTests
     public void NeighborWrapsOnlyWhenCurrentExists(string current, int direction, string? expected) =>
         Assert.Equal(expected, Navigation.Neighbor(["p1", "p2"], current, direction));
 
-    [Theory]
-    [InlineData("cycle", "p2")]
-    [InlineData("pane-next", "p2")]
-    [InlineData("pane-prev", "p2")]
-    public async Task PaneNavigationStaysInTheFocusedTab(string id, string expected)
+    [Fact]
+    public async Task CyclePanesStaysInTheFocusedTab()
     {
         using var app = new FakeApp { Ls = Fixtures.Ls, Status = Fixtures.Status };
-        await new Navigation(app.Client()).ExecuteAsync(id);
-        Assert.Equal(new[] { ("pane.focus", $$"""{"pane":"{{expected}}"}""") }, app.Commands);
+        await new Navigation(app.Client()).ExecuteAsync("cycle");
+        Assert.Equal(new[] { ("pane.focus", """{"pane":"p2"}""") }, app.Commands);
     }
 
     [Fact]
@@ -39,6 +36,13 @@ public class NavigationTests
     [InlineData("space-prev", "space.prev", "{}")]
     [InlineData("split-right", "pane.split", """{"direction":"right"}""")]
     [InlineData("split-down", "pane.split", """{"direction":"down"}""")]
+    [InlineData("pane-left", "pane.go", """{"direction":"left"}""")]
+    [InlineData("pane-up", "pane.go", """{"direction":"up"}""")]
+    [InlineData("pane-down", "pane.go", """{"direction":"down"}""")]
+    [InlineData("pane-right", "pane.go", """{"direction":"right"}""")]
+    [InlineData("sidebar", "layout.toggle", """{"id":"sidebar"}""")]
+    [InlineData("agent-next", "agent.next", "{}")]
+    [InlineData("agent-prev", "agent.prev", "{}")]
     public async Task ShortcutsRunTheAppsOwnCommands(string id, string command, string args)
     {
         using var app = new FakeApp { Ls = Fixtures.Ls, Status = Fixtures.Status };
@@ -67,10 +71,19 @@ public class NavigationTests
     }
 
     [Theory]
-    [InlineData("My agent", "api", "claude", "My agent")]
-    [InlineData(null, "api", "claude", "api")]
-    [InlineData(null, "", "claude", "claude")]
-    [InlineData(null, "", null, "Recent 3")]
-    public void AgentLabelPrefersNameThenSpaceThenApp(string? name, string space, string? app, string expected) =>
-        Assert.Equal(expected, FixedSlots.AgentLabel(new Agent { Name = name, SpaceName = space, App = app }, 3));
+    [InlineData("My agent", "PR 9750", "Fix login", "My agent")]
+    [InlineData(null, "PR 9750", "Fix login", "PR 9750")]
+    [InlineData(null, "2", "Fix login", "Fix login")]
+    [InlineData(null, "Claude Code", "Fix login", "Fix login")]
+    [InlineData(null, "2", null, "dd-source")]
+    public void AgentLabelPrefersNameThenTabThenTitleThenSpace(string? name, string tab, string? title, string expected) =>
+        Assert.Equal(expected, FixedSlots.AgentLabel(
+            new Agent { Name = name, TabName = tab, Title = title, SpaceName = "dd-source", App = "claude-code" }, 3));
+
+    [Fact]
+    public void AgentLabelFallsBackToTheAppAndThenTheSlot()
+    {
+        Assert.Equal("claude", FixedSlots.AgentLabel(new Agent { App = "claude" }, 3));
+        Assert.Equal("Recent 3", FixedSlots.AgentLabel(new Agent(), 3));
+    }
 }

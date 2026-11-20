@@ -8,6 +8,18 @@ Console.WriteLine($"Spaces: {snapshot.Spaces.Count}; tabs: {snapshot.Spaces.Sum(
 foreach (var group in snapshot.Agents.GroupBy(a => a.Machine ?? "Local"))
     Console.WriteLine($"{group.Key}: {group.Count()}");
 Console.WriteLine("States: " + string.Join(", ", snapshot.Agents.GroupBy(a => a.AgentStatus).Select(g => $"{g.Key}={g.Count()}")));
+if (args is ["--labels"])
+{
+    // Titles arrive in the background; poll until the lookup has answered.
+    for (var i = 0; i < 30; i++)
+    {
+        snapshot = await client.GetSnapshotAsync();
+        if (snapshot.Agents.All(a => a.Title is not null || !string.IsNullOrWhiteSpace(a.Name) || TerminalTitles.InformativeTabName(a))) break;
+        await Task.Delay(200);
+    }
+    foreach (var (agent, index) in snapshot.Recent.Select((a, i) => (a, i + 1)))
+        Console.WriteLine($"{index}. {FixedSlots.AgentLabel(agent, index)}  ({agent.Key})");
+}
 if (args is ["--sub-agents"])
 {
     var tree = new SubAgentTree();
