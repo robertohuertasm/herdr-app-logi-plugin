@@ -10,6 +10,7 @@ public sealed class HerdrAppKeypadPlugin : Plugin
     public AgentBoard Board { get; }
     public Navigation Navigation { get; }
     public FixedSlotActions FixedSlotActions { get; }
+    public SubAgentTree SubAgents { get; } = new();
     public override bool UsesApplicationApiOnly => true;
     public override bool HasNoApplication => true;
 
@@ -35,12 +36,14 @@ public sealed class HerdrAppKeypadPlugin : Plugin
         foreach (var action in this.fixedSlots) this.AddDynamicAction(action);
         this.Board.Changed += this.RedrawSlots;
         this.Client.AgentFocusChanged += this.Board.NavigationChanged;
+        this.SubAgents.Changed += this.Board.NavigationChanged;
         _ = Task.Run(() => this.Board.RunAsync(this.stop.Token));
     }
     public override void Unload()
     {
         this.Board.Changed -= this.RedrawSlots;
         this.Client.AgentFocusChanged -= this.Board.NavigationChanged;
+        this.SubAgents.Changed -= this.Board.NavigationChanged;
         this.stop.Cancel();
     }
 

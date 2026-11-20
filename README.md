@@ -28,6 +28,17 @@ middle row, then Layout, Tabs and Spaces on the bottom row. When opened from
 Agents, Back beside the native Back returns to the agent list; the standalone
 Shortcuts folder leaves that position blank. Each shortcut is independently assignable.
 
+**Sub-agents.** Agents that started others (with `hc run`) show an amber
+badge with how many direct sub-agents they have. In the Agents folder, holding
+such an agent opens its sub-agents instead of the close confirmation: Back, the
+agent itself (press to focus it), **Close** for the agent's pane (hold, then
+press **Close?**), and every sub-agent depth first, with its own status, count
+and R badge. Pressing a sub-agent focuses its pane if it was kept as one, and
+otherwise peeks at it over the tab, as the app's agents list does. Sub-agents
+report "done" to their parent, so they show idle; an error shows as blocked.
+Recent Agent keys show the badge too, but a hold there still closes the agent's
+pane: a single key cannot open a folder.
+
 **Recent Agent 1–9** are individual keys for the agents in recent-state-change
 order; press one to focus it, or hold it and then press **Close?** within
 three seconds to close its pane. The held agent is pinned, so a reorder during
@@ -87,7 +98,12 @@ the agent in the app.
 
 An agent's key shows its name when it has one, otherwise its space's name,
 otherwise the program (`claude`, `codex`, ...). The app does not report terminal
-titles over its socket. Sub-agents without a pane are not listed.
+titles over its socket.
+
+`ls` lists only each terminal's direct sub-agent addresses. While a sub-agent
+view is open, the plugin also runs `hc ls --json` (at most every two seconds)
+for their status, program and own sub-agents across machines. It looks for `hc`
+in `HERDR_HC_PATH`, `~/.local/bin`, then the Homebrew locations.
 
 Recency is observed by the plugin: an agent moves to the front when its status
 changes. Merely focusing it does not reorder the keys.

@@ -60,6 +60,8 @@ public sealed record Agent
     public string? Name { get; init; }
     public string? App { get; init; }
     public string AgentStatus { get; init; } = HerdrApp.AgentStatus.Unknown;
+    // Direct sub-agents' addresses, as `ls` lists them.
+    public IReadOnlyList<string> SubAgents { get; init; } = [];
 }
 
 public sealed record Snapshot
@@ -109,6 +111,7 @@ internal sealed record RawTerminal
     public string? Status { get; init; }
     public string? App { get; init; }
     public string? Name { get; init; }
+    public List<string> SubAgents { get; init; } = [];
 }
 
 internal sealed record RawStatus

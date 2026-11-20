@@ -123,6 +123,7 @@ public sealed class HerdrAppClient
                         Name = terminal.Name,
                         App = terminal.App,
                         AgentStatus = terminal.Status,
+                        SubAgents = terminal.SubAgents,
                     });
                 }
                 tabs.Add(new Tab
@@ -176,6 +177,15 @@ public sealed class HerdrAppClient
         Volatile.Write(ref pendingAgentKey, key);
         try { AgentFocusChanged?.Invoke(); }
         catch (Exception e) { Log.Warning($"Could not update pending agent display: {e.Message}"); }
+    }
+
+    // A kept sub-agent has a pane to focus; others are peeked at over the tab,
+    // as the app's agents list does.
+    public async Task FocusSubAgentAsync(SubAgent subAgent)
+    {
+        _ = window.ActivateAsync();
+        if (subAgent.HasPane) await DoAsync("pane.focus", new { terminal = subAgent.Address });
+        else await DoAsync("terminal.peek", new { terminal = subAgent.Address });
     }
 
     public async Task FocusPaneAsync(string paneId)
