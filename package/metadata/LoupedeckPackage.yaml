@@ -1,0 +1,15 @@
+type: plugin4
+name: HerdrAppKeypad
+displayName: Herdr App
+description: Live agents and navigation for the Herdr desktop app on the MX Creative Keypad.
+version: 0.1.0
+author: Roberto Huertas
+copyright: Copyright © 2026 Roberto Huertas
+minimumLoupedeckVersion: 6.4
+pluginFileName: HerdrAppKeypadPlugin.dll
+pluginFolderMac: bin
+supportedDevices:
+    - MxCreativeKeypad
+    - LoupedeckCtFamily
+pluginCapabilities:
+license: MIT
