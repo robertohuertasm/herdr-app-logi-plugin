@@ -9,7 +9,7 @@ public sealed class FixedSlotCommand : PluginDynamicCommand
     private readonly bool isSpace;
     private readonly AgentCloseConfirmation closeConfirmation = new();
     private readonly ClosePaneGesture closeGesture = new();
-    private (string Status, string Label, bool Remote, int SubAgents)? lastFace;
+    private (string Status, string Label, bool Remote, int SubAgents, string? SubAgentStatus)? lastFace;
 
     public FixedSlotCommand(HerdrAppKeypadPlugin owner, int slot, bool isSpace)
         : base(isSpace ? $"Space {slot}" : $"Recent Agent {slot}",
@@ -22,20 +22,20 @@ public sealed class FixedSlotCommand : PluginDynamicCommand
         this.Name = isSpace ? $"herdr_app_keypad_space_{slot}" : $"herdr_app_keypad_recent_{slot}";
     }
 
-    private (string Status, string Label, bool Remote, int SubAgents) Face()
+    private (string Status, string Label, bool Remote, int SubAgents, string? SubAgentStatus) Face()
     {
-        if (!this.owner.Board.Online) return ("offline", "Offline", false, 0);
+        if (!this.owner.Board.Online) return ("offline", "Offline", false, 0, null);
         var snapshot = this.owner.Board.Snapshot;
         if (this.isSpace)
         {
             var space = FixedSlots.Space(snapshot, this.slot);
-            return space is null ? ("none", $"Space {this.slot}", false, 0) : (space.AgentStatus, FixedSlots.SpaceLabel(space, this.slot), false, 0);
+            return space is null ? ("none", $"Space {this.slot}", false, 0, null) : (space.AgentStatus, FixedSlots.SpaceLabel(space, this.slot), false, 0, null);
         }
-        if (this.closeConfirmation.IsArmed) return ("confirm", "Close?", false, 0);
+        if (this.closeConfirmation.IsArmed) return ("confirm", "Close?", false, 0, null);
         var agent = FixedSlots.Recent(snapshot, this.slot);
-        if (agent is null) return ("none", $"Recent {this.slot}", false, 0);
+        if (agent is null) return ("none", $"Recent {this.slot}", false, 0, null);
         var label = this.owner.Client.PendingAgentKey == agent.Key ? "Opening..." : FixedSlots.AgentLabel(agent, this.slot);
-        return (agent.AgentStatus, label, agent.Machine is not null, agent.SubAgents.Count);
+        return (agent.AgentStatus, label, agent.Machine is not null, agent.SubAgents.Count, this.owner.SubAgents.BadgeStatus(agent, snapshot));
     }
 
     public void Refresh()
@@ -119,6 +119,6 @@ public sealed class FixedSlotCommand : PluginDynamicCommand
     protected override BitmapImage GetCommandImage(string actionParameter, PluginImageSize imageSize)
     {
         var face = this.Face();
-        return face.Status == "confirm" ? KeyFaces.Confirm(imageSize) : KeyFaces.State(face.Status, imageSize, face.Remote, face.SubAgents);
+        return face.Status == "confirm" ? KeyFaces.Confirm(imageSize) : KeyFaces.State(face.Status, imageSize, face.Remote, face.SubAgents, face.SubAgentStatus);
     }
 }

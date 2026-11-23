@@ -29,9 +29,14 @@ right/down, Pane left/up/down/right, Close pane and Sidebar. When opened from
 Agents, Back beside the native Back returns to the agent list; the standalone
 Shortcuts folder leaves that position blank. Each shortcut is independently assignable.
 
-**Sub-agents.** Agents that started others (with `hc run`) show an amber
-badge with how many direct sub-agents they have. In the Agents folder, holding
-such an agent opens its sub-agents instead of the close confirmation: Back, the
+**Sub-agents.** Agents that started others (with `hc run`) show a badge
+with how many direct sub-agents they have. The badge takes the color of the
+most urgent status anywhere below the agent: blue when a child finished unseen
+while the parent still works (amber), red when one is blocked, amber when one
+works, green when all are idle, grey until their statuses are known. A parent
+whose own face looks calm therefore still tells you a child needs you.
+
+In the Agents folder, holding such an agent opens its sub-agents instead of the close confirmation: Back, the
 agent itself, and every sub-agent depth first, with its own status, count
 and R badge. Inside that detail, press the parent to focus it; hold its own
 key, release, then press **Close?** within three seconds to close its pane.
@@ -126,9 +131,10 @@ nothing, so those agents show their terminal's title ("Fix login"), then the
 space's name. The socket has no titles: they come from `hc get <terminal>
 --json`, only for agents that need one, in the background every five seconds.
 
-`ls` lists only each terminal's direct sub-agent addresses. While a sub-agent
-view is open, the plugin also runs `hc ls --json` (at most every two seconds)
-for their status, program and own sub-agents across machines. It looks for `hc`
+`ls` lists only each terminal's direct sub-agent addresses. While any agent
+has sub-agents, the plugin also runs `hc ls --json` (at most every two seconds)
+for their status, program and own sub-agents across machines, which colors the
+badges and fills the sub-agent view. It looks for `hc`
 in `HERDR_HC_PATH`, `~/.local/bin`, then the Homebrew locations.
 
 Recency is observed by the plugin: an agent moves to the front when its status

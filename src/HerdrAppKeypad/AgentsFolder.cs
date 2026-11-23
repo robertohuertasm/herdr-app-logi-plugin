@@ -58,7 +58,7 @@ public sealed class AgentsFolder : PluginDynamicFolder
             foreach (var sub in this.shownSubAgents)
             {
                 var tag = sub.Label.GetHashCode(StringComparison.Ordinal).ToString("x8");
-                var face = this.armed?.Key == sub.Address ? "confirm" : $"{sub.AgentStatus}-{sub.SubAgentCount}-{tag}";
+                var face = this.armed?.Key == sub.Address ? "confirm" : $"{sub.AgentStatus}-{sub.SubAgentCount}-{sub.SubAgentStatus}-{tag}";
                 yield return this.CreateCommandName($"sub:{face}:{sub.Address}");
             }
             yield break;
@@ -76,7 +76,8 @@ public sealed class AgentsFolder : PluginDynamicFolder
         if (this.armed?.Key == agent.Key) return "confirm";
         if (this.Owner.Client.PendingAgentKey == agent.Key) return "opening";
         var tag = FixedSlots.AgentLabel(agent, slot).GetHashCode(StringComparison.Ordinal);
-        return $"{agent.AgentStatus}-{agent.SubAgents.Count}-{tag:x8}";
+        var badge = this.Owner.SubAgents.BadgeStatus(agent, this.Owner.Board.Snapshot);
+        return $"{agent.AgentStatus}-{agent.SubAgents.Count}-{badge}-{tag:x8}";
     }
 
     // Parameters are `<kind>:<face>:<key>`; the key may itself contain colons.
@@ -126,12 +127,13 @@ public sealed class AgentsFolder : PluginDynamicFolder
         if (actionParameter.StartsWith("sub:", StringComparison.Ordinal))
         {
             var sub = this.FindSub(actionParameter);
-            return KeyFaces.State(sub?.AgentStatus ?? "unknown", imageSize, sub?.Remote == true, sub?.SubAgentCount ?? 0);
+            return KeyFaces.State(sub?.AgentStatus ?? "unknown", imageSize, sub?.Remote == true, sub?.SubAgentCount ?? 0, sub?.SubAgentStatus);
         }
         if (actionParameter.StartsWith("agent:", StringComparison.Ordinal) || actionParameter.StartsWith("parent:", StringComparison.Ordinal))
         {
             var agent = this.Find(actionParameter);
-            return KeyFaces.State(agent?.AgentStatus ?? "unknown", imageSize, agent?.Machine is not null, agent?.SubAgents.Count ?? 0);
+            var badge = agent is null ? null : this.Owner.SubAgents.BadgeStatus(agent, this.Owner.Board.Snapshot);
+            return KeyFaces.State(agent?.AgentStatus ?? "unknown", imageSize, agent?.Machine is not null, agent?.SubAgents.Count ?? 0, badge);
         }
         if (actionParameter.StartsWith("action:", StringComparison.Ordinal))
             return KeyFaces.Shortcut(actionParameter[7..], this.GetCommandDisplayName(actionParameter, imageSize), imageSize);

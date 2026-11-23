@@ -109,7 +109,7 @@ internal static class KeyFaces
         return b.ToImage();
     }
 
-    public static BitmapImage State(string status, PluginImageSize size, bool remote = false, int subAgents = 0)
+    public static BitmapImage State(string status, PluginImageSize size, bool remote = false, int subAgents = 0, string? subAgentStatus = null)
     {
         var rgb = AgentPalette.For(status);
         var color = new BitmapColor(rgb.Red, rgb.Green, rgb.Blue);
@@ -138,16 +138,19 @@ internal static class KeyFaces
         }
         if (subAgents > 0)
         {
-            // Sub-agent count: hold the key to list them.
+            // Sub-agent count: hold the key to list them. Its color is the most
+            // urgent sub-agent's, grey until their statuses are known.
             var unit = Math.Min(b.Width, b.Height);
             var cx = b.Width / 2f - unit * 0.23f;
             var cy = b.Height * 0.55f - unit * 0.23f;
             var badgeRadius = unit * 0.115f;
             b.FillCircle(cx, cy, badgeRadius + unit * 0.025f, BitmapColor.Black);
-            b.FillCircle(cx, cy, badgeRadius, new BitmapColor(240, 170, 30));
+            var badge = subAgentStatus is AgentStatus.Blocked or AgentStatus.Done or AgentStatus.Working or AgentStatus.Idle
+                ? AgentPalette.For(subAgentStatus) : new AgentColor(200, 200, 200);
+            b.FillCircle(cx, cy, badgeRadius, new BitmapColor(badge.Red, badge.Green, badge.Blue));
             b.DrawText(subAgents > 9 ? "9+" : subAgents.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 (int)(cx - badgeRadius), (int)(cy - badgeRadius + unit * 0.065f) - 2,
-                (int)(badgeRadius * 2), (int)(badgeRadius * 2), BitmapColor.Black,
+                (int)(badgeRadius * 2), (int)(badgeRadius * 2), subAgentStatus == AgentStatus.Blocked ? BitmapColor.White : BitmapColor.Black,
                 (int)(unit * (subAgents > 9 ? 0.11f : 0.15f)), 0, 0, null);
         }
         return b.ToImage();

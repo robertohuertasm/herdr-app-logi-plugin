@@ -13,11 +13,14 @@ public sealed record SubAgent
     public bool HasPane { get; init; }
     public bool Remote { get; init; }
     public int SubAgentCount { get; init; }
+    // The most urgent status among its own sub-agents, for its badge.
+    public string? SubAgentStatus { get; init; }
 }
 
 // The app's `ls` lists only each terminal's direct sub-agent addresses. Their
 // status, program and own sub-agents come from the core: `hc ls --json`, which
-// covers every connected machine. It runs only while a sub-agent view asks.
+// covers every connected machine. It runs, at most every two seconds, only
+// while some agent has sub-agents: their badges and the sub-agent view need it.
 public sealed class SubAgentTree
 {
     private static readonly TimeSpan MaxAge = TimeSpan.FromSeconds(2);
@@ -67,6 +70,11 @@ public sealed class SubAgentTree
         }
         return snapshot.Recent.Where(a => roots.Contains(a.Key)).ToList();
     }
+
+    // The badge's color: the most urgent status in the whole family below the
+    // parent, so a finished child shows even while the parent still works.
+    public string? BadgeStatus(Agent parent, Snapshot snapshot) =>
+        parent.SubAgents.Count == 0 ? null : AgentPriority.MostUrgentStatus(this.Read(parent, snapshot).Select(s => s.AgentStatus));
 
     // Returns what is known now and refreshes in the background when stale.
     public IReadOnlyList<SubAgent> Read(Agent parent, Snapshot snapshot)
@@ -137,7 +145,23 @@ public sealed class SubAgentTree
 
         var direct = Children(parent.Key).ToList();
         foreach (var address in direct.Count > 0 ? direct : parent.SubAgents) Add(address);
-        return result;
+
+        // Each sub-agent's badge covers its own descendants, as the parent's does.
+        var statusOf = result.ToDictionary(s => s.Address, s => s.AgentStatus);
+        List<string> Below(string address)
+        {
+            var found = new List<string>();
+            var visited = new HashSet<string> { address };
+            var pending = new Stack<string>(Children(address));
+            while (pending.TryPop(out var child))
+            {
+                if (!visited.Add(child) || !statusOf.TryGetValue(child, out var status)) continue;
+                found.Add(status);
+                foreach (var next in Children(child)) pending.Push(next);
+            }
+            return found;
+        }
+        return result.Select(s => s with { SubAgentStatus = AgentPriority.MostUrgentStatus(Below(s.Address)) }).ToList();
     }
 
     // Remote cores may report a bare parent ID; qualify it like the address.

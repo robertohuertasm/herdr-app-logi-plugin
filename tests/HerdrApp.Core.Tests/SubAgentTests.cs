@@ -32,6 +32,36 @@ public class SubAgentTests
     }
 
     [Fact]
+    public void EachSubAgentsBadgeCoversItsDescendants()
+    {
+        var subs = SubAgentTree.Build(Snapshot.Agents[0], Snapshot, SubAgentTree.Parse(Core));
+        // s1's only child s2 has no status yet; the others have no children.
+        Assert.Equal(new string?[] { "unknown", null, null }, subs.Select(s => s.SubAgentStatus));
+    }
+
+    [Fact]
+    public async Task ParentBadgeTakesTheMostUrgentStatusInTheFamily()
+    {
+        // The parent works; a kept child finished unseen, so the badge is blue.
+        const string core = """
+            {"terminals":[
+              {"address":"a1","agent":"claude-code","state":"live","status":"working"},
+              {"address":"k1","agent":"codex","parent":"a1","state":"live","status":"done"},
+              {"address":"k2","agent":"codex","parent":"a1","state":"live","status":"working"}]}
+            """;
+        var parent = new Agent { TerminalId = "a1", AgentStatus = "working", SubAgents = ["k1", "k2"] };
+        var snapshot = new HerdrApp.Snapshot
+        {
+            Spaces = [new Space { SpaceId = "s", Tabs = [new Tab { TabId = "t", Panes = [new Pane { PaneId = "p1", TerminalId = "k1" }] }] }],
+            Agents = [parent, new Agent { TerminalId = "k1", PaneId = "p1", AgentStatus = "done" }],
+        };
+        var tree = new SubAgentTree(() => Task.FromResult(core));
+        await tree.RefreshAsync();
+        Assert.Equal("done", tree.BadgeStatus(parent, snapshot));
+        Assert.Null(tree.BadgeStatus(new Agent { TerminalId = "lonely" }, snapshot));
+    }
+
+    [Fact]
     public void BeforeTheCoreAnswersTheDirectSubAgentsFromLsAreShown()
     {
         var subs = SubAgentTree.Build(Snapshot.Agents[0], Snapshot, []);

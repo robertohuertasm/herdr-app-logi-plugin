@@ -6,6 +6,9 @@ public static class AgentPriority
     public static Agent? MostUrgent(IReadOnlyList<Agent> recent) =>
         recent.MinBy(agent => Priority(agent.AgentStatus));
 
+    // The status whose color the sub-agent badge takes; null for no statuses.
+    public static string? MostUrgentStatus(IEnumerable<string> statuses) => statuses.MinBy(Priority);
+
     private static int Priority(string? status) => status switch
     {
         AgentStatus.Blocked => 0,
