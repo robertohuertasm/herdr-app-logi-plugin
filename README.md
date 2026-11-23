@@ -32,13 +32,25 @@ Shortcuts folder leaves that position blank. Each shortcut is independently assi
 **Sub-agents.** Agents that started others (with `hc run`) show an amber
 badge with how many direct sub-agents they have. In the Agents folder, holding
 such an agent opens its sub-agents instead of the close confirmation: Back, the
-agent itself (press to focus it), **Close** for the agent's pane (hold, then
-press **Close?**), and every sub-agent depth first, with its own status, count
-and R badge. Pressing a sub-agent focuses its pane if it was kept as one, and
-otherwise peeks at it over the tab, as the app's agents list does. Sub-agents
-report "done" to their parent, so they show idle; an error shows as blocked.
+agent itself, and every sub-agent depth first, with its own status, count
+and R badge. Inside that detail, press the parent to focus it; hold its own
+key, release, then press **Close?** within three seconds to close its pane.
+Children with panes use the same hold-then-confirm gesture on their own keys.
+There is no separate Close key. Pressing a sub-agent focuses its pane if it
+was kept as one, and otherwise peeks at it over the tab, as the app's agents
+list does. Sub-agents without panes can be peeked at but cannot be closed with
+this pane-close gesture. Sub-agents report "done" to their parent, so they show
+idle; an error shows as blocked.
 Recent Agent keys show the badge too, but a hold there still closes the agent's
 pane: a single key cannot open a folder.
+The Agents folder shows each family under its parent: children reachable
+through a parent in the folder appear only in its long-press detail, without
+duplicate keys at the top level. Recent Agent keys and Next/Previous agent
+still include every agent with a pane.
+Parentage comes from herdr-core's `parent` metadata, not names or tab order.
+If the parent has no pane in this window (for example, it runs in another
+terminal app), it has no key here to carry the count or open that detail.
+Its children with panes still appear as individual agents.
 
 **Recent Agent 1–9** are individual keys for the agents in recent-state-change
 order; press one to focus it, or hold it and then press **Close?** within
@@ -83,7 +95,7 @@ permission is involved:
 | Zoom pane | `pane.zoom` |
 | Cycle panes | `pane.focus` on the next pane of the focused tab, in `ls` order (which need not match the cards' layout) |
 | Pane left/up/down/right | `pane.go {direction}`, the app's own Cmd+Alt+arrows |
-| Next/Previous agent | `agent.next` / `agent.prev`, in the order of the app's agents list |
+| Next/Previous agent | `agent.focus {terminal}` through all agents with panes, in space/tab/pane order, wrapping at either end |
 | Sidebar | `layout.toggle {id: "sidebar"}` (Cmd+B) |
 | Cycle tabs, Previous/Next tab | `tab.next` / `tab.prev` |
 | Go to | `mod.open {name: "picker"}`, the app's own Go to picker (Cmd+P) |
@@ -99,6 +111,13 @@ focused and closed through the same commands, with no SSH or machine
 configuration in the plugin. Those in a space on another machine show the R
 badge. **Done** is the app's own unseen state: it turns idle once you look at
 the agent in the app.
+
+Next/Previous agent include kept sub-agents with their own panes. They read the
+current focus and full agent list on every press, using space/tab/pane order
+so status changes do not reorder the cycle. This avoids a Herdr App 0.1.16 bug:
+its native `agent.next` / `agent.prev` resolve a kept sub-agent to its parent,
+which can reset the cycle and leave later sessions unreachable. Sub-agents
+without panes remain accessible by holding their parent in the Agents folder.
 
 An agent's key is labelled as in the app's agents list: its name when it has
 one, otherwise its tab's name (the session, e.g. "PR 9750 - inventory"). A tab

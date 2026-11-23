@@ -38,9 +38,21 @@ public sealed class Navigation(HerdrAppClient client)
                 case "tab-prev": await client.DoAsync("tab.prev"); break;
                 case "space-next": await client.DoAsync("space.next"); break;
                 case "space-prev": await client.DoAsync("space.prev"); break;
-                // In the order of the app's agents list, which puts those that need you first.
-                case "agent-next": await client.DoAsync("agent.next"); break;
-                case "agent-prev": await client.DoAsync("agent.prev"); break;
+                case "agent-next" or "agent-prev":
+                {
+                    // Herdr 0.1.16 resolves the current agent to its parent before
+                    // advancing. Kept sub-agents can therefore reset the cycle,
+                    // leaving later agents unreachable. Walk the pane-backed
+                    // agents in stable space/tab/pane order instead.
+                    var s = await client.GetSnapshotAsync();
+                    if (s.Agents.Count == 0) break;
+                    var current = s.Agents.ToList().FindIndex(a => a.PaneId == s.FocusedPaneId);
+                    var direction = id == "agent-next" ? 1 : -1;
+                    var next = current < 0 ? (direction > 0 ? 0 : s.Agents.Count - 1)
+                        : (current + direction + s.Agents.Count) % s.Agents.Count;
+                    if (next != current) await client.FocusAgentAsync(s.Agents[next].Key);
+                    break;
+                }
                 // The app moves between panes by direction, as its keys do.
                 case "pane-left" or "pane-up" or "pane-down" or "pane-right":
                     await client.DoAsync("pane.go", new { direction = id[5..] });

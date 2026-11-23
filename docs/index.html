@@ -62,7 +62,7 @@
       <figure><img src="images/agents-folder.png" alt="Agents folder with Back, Shortcuts, Cycle panes and six agents"><figcaption>Agents folder</figcaption></figure>
     </div>
     <p>Assign Recent Agent 1–9 directly, or open the Agents folder to browse live agents. Keys carry the same names as the app's agents list: the tab's session name, or the terminal's title for unnamed tabs. A press focuses the agent; on Recent Agent keys and inside the Agents folder, a long press offers a confirmation before closing its pane. Agents in spaces on other machines carry a small R badge.</p>
-    <p><b>Sub-agents:</b> an agent that started others shows an amber badge with their number. Hold it in the Agents folder to list them, each with its own state, plus the agent itself and a <b>Close</b> key for its pane. Press a sub-agent to focus it, or peek at it when it has no pane. On Recent Agent keys a hold still closes the pane.</p>
+    <p><b>Sub-agents:</b> an agent that started others shows an amber badge with their number. Hold it in the Agents folder to list them, each with its own state, plus Back and the parent itself. Inside that detail, hold the parent's own key or a child with a pane, release, then press <b>Close?</b> within three seconds to confirm closing that pane. There is no separate Close key. Children reachable through a parent in the folder appear only inside that parent's detail, without duplicate keys at the top level. Recent Agent keys and Next/Previous agent still include every agent with a pane. Press a sub-agent to focus it, or peek at it when it has no pane; children without panes cannot use the pane-close gesture. On Recent Agent keys a hold still prepares a confirmed pane close.</p>
     <p>The app already connects to your machines, so local and remote agents share one list and are focused and closed the same way. No SSH or machine setup in the plugin.</p>
   </section>
 
@@ -72,8 +72,9 @@
       <figure><img src="images/shortcuts-folder.png" alt="Shortcuts folder with Zoom pane, Cycle panes, Next agent, Go to, Layout, Tabs and Spaces"><figcaption>Shortcuts</figcaption></figure>
       <figure><img src="images/layout-folder.png" alt="Layout folder with splits, pane left, up, down and right, Close pane and Sidebar"><figcaption>Layout</figcaption></figure>
     </div>
-    <p>Zoom a pane, cycle panes, jump to the next agent in the app's agents list, open the app's Go to picker, split the layout, move between panes by direction, toggle the sidebar, and move between tabs and spaces. Each shortcut is also an individual action. To close the focused pane, hold <b>Close pane</b>, then press <b>Close?</b> within three seconds.</p>
+    <p>Zoom a pane, cycle panes, jump to the next agent, open the app's Go to picker, split the layout, move between panes by direction, toggle the sidebar, and move between tabs and spaces. Next/Previous agent cycle through all agents with panes in space, tab and pane order, including kept sub-agents, and wrap at either end. The cycle follows your current focus on every press and stays in the same order when statuses change. This avoids a Herdr App 0.1.16 issue where native agent navigation can return to the start after a kept sub-agent and miss later sessions. Each shortcut is also an individual action. To close the focused pane, hold <b>Close pane</b>, then press <b>Close?</b> within three seconds.</p>
     <p>Every key runs one of the app's own commands over its control socket, the one <code>herdr-app do</code> uses. Nothing is typed into the window, so no Accessibility permission is needed.</p>
+    <p>Sub-agent relationships come from herdr-core's <code>parent</code> metadata. A parent with a pane in this window shows its sub-agent count; hold its key in Agents to open the detail. If the parent runs outside this window, it has no key here, and its children with panes appear individually.</p>
   </section>
 
   <section>

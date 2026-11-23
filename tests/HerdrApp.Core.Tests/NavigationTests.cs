@@ -41,8 +41,6 @@ public class NavigationTests
     [InlineData("pane-down", "pane.go", """{"direction":"down"}""")]
     [InlineData("pane-right", "pane.go", """{"direction":"right"}""")]
     [InlineData("sidebar", "layout.toggle", """{"id":"sidebar"}""")]
-    [InlineData("agent-next", "agent.next", "{}")]
-    [InlineData("agent-prev", "agent.prev", "{}")]
     public async Task ShortcutsRunTheAppsOwnCommands(string id, string command, string args)
     {
         using var app = new FakeApp { Ls = Fixtures.Ls, Status = Fixtures.Status };

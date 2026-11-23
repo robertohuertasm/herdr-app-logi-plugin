@@ -32,6 +32,42 @@ public sealed class SubAgentTree
 
     public event Action? Changed;
 
+    // The folder lists a family once, under a parent whose key can open it.
+    // Recent slots and next/previous navigation keep the complete agent list.
+    public static IReadOnlyList<Agent> TopLevel(Snapshot snapshot)
+    {
+        var byKey = snapshot.Agents.ToDictionary(a => a.Key);
+        var children = snapshot.Agents.SelectMany(a => a.SubAgents).ToHashSet();
+        var roots = new HashSet<string>();
+        var covered = new HashSet<string>();
+
+        void Cover(Agent agent)
+        {
+            var pending = new Stack<Agent>();
+            pending.Push(agent);
+            while (pending.TryPop(out var current))
+            {
+                if (!covered.Add(current.Key)) continue;
+                foreach (var key in current.SubAgents)
+                    if (byKey.TryGetValue(key, out var child)) pending.Push(child);
+            }
+        }
+
+        foreach (var agent in snapshot.Agents.Where(a => !children.Contains(a.Key)))
+        {
+            roots.Add(agent.Key);
+            Cover(agent);
+        }
+        // Keep agents reachable even if incomplete/cyclic metadata leaves a
+        // component without a root. Use model order for a stable representative.
+        foreach (var agent in snapshot.Agents.Where(a => !covered.Contains(a.Key)))
+        {
+            roots.Add(agent.Key);
+            Cover(agent);
+        }
+        return snapshot.Recent.Where(a => roots.Contains(a.Key)).ToList();
+    }
+
     // Returns what is known now and refreshes in the background when stale.
     public IReadOnlyList<SubAgent> Read(Agent parent, Snapshot snapshot)
     {

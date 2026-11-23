@@ -12,7 +12,7 @@ public sealed class AgentsFolder : PluginDynamicFolder
     private IReadOnlyList<SubAgent> shownSubAgents = [];
     private CloseTarget? armed;
     private DateTime armedUntil;
-    private bool longPressHandled;
+    private readonly AgentFolderGesture gesture = new();
     private string? cyclePressed;
     private string? lastFolderStatus;
     public AgentsFolder()
@@ -55,25 +55,25 @@ public sealed class AgentsFolder : PluginDynamicFolder
             this.shownSubAgents = this.Owner.SubAgents.Read(parent, this.Owner.Board.Snapshot);
             yield return this.CreateCommandName("sub-back");
             yield return this.CreateCommandName($"parent:{AgentFace(parent, 1)}:{parent.Key}");
-            yield return this.CreateCommandName($"parent-close:{(this.armed?.Key == parent.Key ? "confirm" : "arm")}:{parent.Key}");
             foreach (var sub in this.shownSubAgents)
             {
                 var tag = sub.Label.GetHashCode(StringComparison.Ordinal).ToString("x8");
-                yield return this.CreateCommandName($"sub:{sub.AgentStatus}-{sub.SubAgentCount}-{tag}:{sub.Address}");
+                var face = this.armed?.Key == sub.Address ? "confirm" : $"{sub.AgentStatus}-{sub.SubAgentCount}-{tag}";
+                yield return this.CreateCommandName($"sub:{face}:{sub.Address}");
             }
             yield break;
         }
         yield return this.CreateCommandName("open-shortcuts");
         yield return this.CreateCommandName("action:cycle");
-        foreach (var (a, index) in this.Owner.Board.Snapshot.Recent.Select((agent, index) => (agent, index)))
+        foreach (var (a, index) in SubAgentTree.TopLevel(this.Owner.Board.Snapshot).Select((agent, index) => (agent, index)))
         {
-            var face = this.armed?.Key == a.Key ? "confirm" : AgentFace(a, index + 1);
-            yield return this.CreateCommandName($"agent:{face}:{a.Key}");
+            yield return this.CreateCommandName($"agent:{AgentFace(a, index + 1)}:{a.Key}");
         }
     }
 
     private string AgentFace(Agent agent, int slot)
     {
+        if (this.armed?.Key == agent.Key) return "confirm";
         if (this.Owner.Client.PendingAgentKey == agent.Key) return "opening";
         var tag = FixedSlots.AgentLabel(agent, slot).GetHashCode(StringComparison.Ordinal);
         return $"{agent.AgentStatus}-{agent.SubAgents.Count}-{tag:x8}";
@@ -89,12 +89,17 @@ public sealed class AgentsFolder : PluginDynamicFolder
 
     private Agent? Find(string parameter)
     {
-        var key = KeyOf(parameter, "agent") ?? KeyOf(parameter, "parent") ?? KeyOf(parameter, "parent-close");
+        var key = KeyOf(parameter, "agent") ?? KeyOf(parameter, "parent") ?? KeyOf(parameter, "sub");
         return key is null ? null : this.Owner.Board.Snapshot.Agents.FirstOrDefault(a => a.Key == key);
     }
 
     private SubAgent? FindSub(string parameter) =>
         KeyOf(parameter, "sub") is { } address ? this.shownSubAgents.FirstOrDefault(s => s.Address == address) : null;
+
+    private static bool IsConfirmation(string parameter) =>
+        parameter.StartsWith("agent:confirm:", StringComparison.Ordinal)
+        || parameter.StartsWith("parent:confirm:", StringComparison.Ordinal)
+        || parameter.StartsWith("sub:confirm:", StringComparison.Ordinal);
 
     public override string GetCommandDisplayName(string actionParameter, PluginImageSize imageSize)
     {
@@ -103,14 +108,12 @@ public sealed class AgentsFolder : PluginDynamicFolder
         if (actionParameter == "action:cycle") return "Cycle panes";
         if (actionParameter == "action:cycle-tabs") return "Cycle tabs";
         if (actionParameter == "sub-back") return "Back";
-        if (actionParameter.StartsWith("parent-close:", StringComparison.Ordinal))
-            return actionParameter.StartsWith("parent-close:confirm:", StringComparison.Ordinal) ? "Close?" : "Close";
+        if (IsConfirmation(actionParameter)) return "Close?";
         if (actionParameter.StartsWith("sub:", StringComparison.Ordinal)) return this.FindSub(actionParameter)?.Label ?? " ";
         var agent = this.Find(actionParameter);
         if (agent is null) return " ";
-        if (actionParameter.StartsWith("agent:confirm:", StringComparison.Ordinal)) return "Close?";
         if (this.Owner.Client.PendingAgentKey == agent.Key) return "Opening...";
-        var index = this.Owner.Board.Snapshot.Recent.ToList().FindIndex(a => a.Key == agent.Key);
+        var index = SubAgentTree.TopLevel(this.Owner.Board.Snapshot).ToList().FindIndex(a => a.Key == agent.Key);
         return FixedSlots.AgentLabel(agent, index + 1);
     }
 
@@ -119,9 +122,7 @@ public sealed class AgentsFolder : PluginDynamicFolder
         if (actionParameter.StartsWith("shortcuts:", StringComparison.Ordinal)) return this.shortcuts.GetCommandImage(actionParameter[10..], imageSize);
         if (actionParameter == "open-shortcuts") return KeyFaces.Icon("layout", "Shortcuts", imageSize);
         if (actionParameter == "sub-back") return KeyFaces.Icon("chevron-left", "Back", imageSize);
-        if (actionParameter.StartsWith("agent:confirm:", StringComparison.Ordinal) || actionParameter.StartsWith("parent-close:confirm:", StringComparison.Ordinal))
-            return KeyFaces.Confirm(imageSize);
-        if (actionParameter.StartsWith("parent-close:", StringComparison.Ordinal)) return KeyFaces.Shortcut("close-pane", "Close", imageSize);
+        if (IsConfirmation(actionParameter)) return KeyFaces.Confirm(imageSize);
         if (actionParameter.StartsWith("sub:", StringComparison.Ordinal))
         {
             var sub = this.FindSub(actionParameter);
@@ -140,7 +141,9 @@ public sealed class AgentsFolder : PluginDynamicFolder
     public override bool ProcessButtonEvent2(string actionParameter, DeviceButtonEvent2 buttonEvent)
     {
         if (actionParameter.StartsWith("shortcuts:", StringComparison.Ordinal)) return this.showingShortcuts && this.shortcuts.ProcessButtonEvent2(actionParameter[10..], buttonEvent);
-        var holdable = actionParameter.StartsWith("agent:", StringComparison.Ordinal) || actionParameter.StartsWith("parent-close:", StringComparison.Ordinal);
+        var holdable = actionParameter.StartsWith("agent:", StringComparison.Ordinal)
+            || actionParameter.StartsWith("parent:", StringComparison.Ordinal)
+            || actionParameter.StartsWith("sub:", StringComparison.Ordinal);
         if (!holdable)
         {
             // Everything else acts on release, and a hold does nothing.
@@ -156,30 +159,37 @@ public sealed class AgentsFolder : PluginDynamicFolder
                 default: return base.ProcessButtonEvent2(actionParameter, buttonEvent);
             }
         }
-        switch (buttonEvent.EventType)
+        var gestureEvent = buttonEvent.EventType switch
         {
-            case DeviceButtonEventType.Press: this.longPressHandled = false; return true;
-            case DeviceButtonEventType.LongPress:
-                this.longPressHandled = true;
-                if (this.Find(actionParameter) is not { TerminalId.Length: > 0 } agent) return true;
-                // An agent with sub-agents lists them; its Close key is in that view.
-                if (actionParameter.StartsWith("agent:", StringComparison.Ordinal) && agent.SubAgents.Count > 0)
-                {
-                    this.armed = null;
-                    this.subAgentsOf = agent.Key;
-                    this.Plugin.Log.Info("Agents folder opened sub-agents");
-                    _ = this.Owner.SubAgents.RefreshAsync();
-                    this.Changed();
-                }
-                else this.Arm(agent);
-                return true;
-            case DeviceButtonEventType.RepeatPress: return true;
-            case DeviceButtonEventType.Release:
-                if (!this.longPressHandled) this.RunCommand(actionParameter);
-                this.longPressHandled = false;
-                return true;
-            default: return false;
+            DeviceButtonEventType.Press => ClosePaneButtonEvent.Press,
+            DeviceButtonEventType.LongPress => ClosePaneButtonEvent.LongPress,
+            DeviceButtonEventType.RepeatPress => ClosePaneButtonEvent.RepeatPress,
+            DeviceButtonEventType.Release => ClosePaneButtonEvent.Release,
+            _ => (ClosePaneButtonEvent?)null,
+        };
+        if (gestureEvent is null) return false;
+        var agent = this.Find(actionParameter);
+        var opensSubAgents = actionParameter.StartsWith("agent:", StringComparison.Ordinal) && agent?.SubAgents.Count > 0;
+        var hasPane = agent is { TerminalId.Length: > 0, PaneId.Length: > 0 };
+        var confirming = agent is not null && this.armed?.Key == agent.Key && IsConfirmation(actionParameter);
+        switch (this.gesture.Process(gestureEvent.Value, opensSubAgents, hasPane, confirming))
+        {
+            case AgentFolderGestureAction.OpenSubAgents:
+                this.armed = null;
+                this.subAgentsOf = agent!.Key;
+                this.Plugin.Log.Info("Agents folder opened sub-agents");
+                _ = this.Owner.SubAgents.RefreshAsync();
+                this.Changed();
+                break;
+            case AgentFolderGestureAction.ArmClose:
+                this.Arm(agent!);
+                break;
+            case AgentFolderGestureAction.Tap:
+            case AgentFolderGestureAction.ConfirmClose:
+                this.RunCommand(actionParameter);
+                break;
         }
+        return true;
     }
 
     private void Arm(Agent agent)
@@ -211,21 +221,24 @@ public sealed class AgentsFolder : PluginDynamicFolder
             this.Plugin.Log.Info($"{id} pressed in Agents folder");
             _ = this.ExecuteAsync(id);
         }
-        else if (this.FindSub(actionParameter) is { } sub) _ = this.FocusSubAgentAsync(sub);
         else if (this.Find(actionParameter) is { } agent)
         {
             var target = this.armed;
             this.armed = null;
-            var confirming = actionParameter.StartsWith("agent:confirm:", StringComparison.Ordinal)
-                || actionParameter.StartsWith("parent-close:confirm:", StringComparison.Ordinal);
+            var confirming = IsConfirmation(actionParameter);
             if (target is not null && target.Key == agent.Key && confirming && DateTime.UtcNow <= this.armedUntil)
             {
                 _ = this.CloseAsync(target);
-                if (this.subAgentsOf is not null) { this.ReturnToAgents(); return; }
+                if (this.subAgentsOf == target.Key) { this.ReturnToAgents(); return; }
             }
-            else if (actionParameter.StartsWith("parent-close:", StringComparison.Ordinal))
-                this.Plugin.Log.Info("Hold Close, then press Close? to close the agent's pane");
+            else if (this.FindSub(actionParameter) is { } sub) _ = this.FocusSubAgentAsync(sub);
             else _ = this.FocusAsync(agent.Key);
+            this.Changed();
+        }
+        else if (this.FindSub(actionParameter) is { } sub)
+        {
+            this.armed = null;
+            _ = this.FocusSubAgentAsync(sub);
             this.Changed();
         }
     }
@@ -238,6 +251,7 @@ public sealed class AgentsFolder : PluginDynamicFolder
         this.shownSubAgents = [];
         this.armed = null;
         this.cyclePressed = null;
+        this.gesture.Cancel();
     }
 
     private void ReturnToAgents()
